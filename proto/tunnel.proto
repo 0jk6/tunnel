@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package tunnel;
+
+option go_package = "github.com/0jk6/tunnel/proto";
+
+message TunnelMessage {
+    string id = 1;
+    string method = 2;
+    string path = 3;
+    bytes body = 4;
+    map<string, string> headers = 5;
+}
+
+service TunnelService {
+    rpc Connect(stream TunnelMessage) returns (stream TunnelMessage);
+}
