@@ -20,23 +20,31 @@ func (s *Server) WildcardHandler(w http.ResponseWriter, r *http.Request) {
 	stream, ok := s.streams[subdomain]
 
 	if !ok {
-		w.Write([]byte("stream not found"))
+		http.Error(w, "stream not found", http.StatusNotFound)
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		log.Fatalf("Error while reading body: %v", err)
-		return
+	var body []byte
+	if r.Body != nil {
+		defer r.Body.Close()
+		var err error
+		body, err = io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "failed to read request body", http.StatusInternalServerError)
+			log.Fatalf("Error while reading body: %v", err)
+			return
+		}
 	}
 
 	// Copy headers from the incoming request
 	headers := make(map[string]string)
 	for key, values := range r.Header {
-		headers[key] = values[0]
+		if len(values) > 0 {
+			headers[key] = values[0]
+		}
 	}
 
-	err = stream.Send(&pb.TunnelMessage{
+	err := stream.Send(&pb.TunnelMessage{
 		Id:      subdomain,
 		Body:    body,
 		Path:    r.URL.Path,
@@ -45,21 +53,30 @@ func (s *Server) WildcardHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		log.Fatalf("Error while sending data to the client: %v", err)
-	}
-
-	res, err := stream.Recv()
-
-	if err == io.EOF {
+		http.Error(w, "failed to send data to gRPC client", http.StatusInternalServerError)
+		log.Fatalf("Error while sending data to the gRPC client: %v", err)
 		return
 	}
 
-	// Set response headers based on the gRPC response
-	for key, value := range res.Headers {
-		w.Header().Set(key, value)
+	res, err := stream.Recv()
+	if err != nil {
+		if err == io.EOF {
+			return
+		}
+		http.Error(w, "failed to receive data from gRPC client", http.StatusInternalServerError)
+		log.Printf("Error while receiving data from the client: %v", err)
+		return
 	}
 
-	w.WriteHeader(200)
+	if res != nil {
+		// Set response headers based on the gRPC response
+		for key, value := range res.Headers {
+			w.Header().Set(key, value)
+		}
 
-	w.Write(res.Body)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(res.Body)
+	} else {
+		http.Error(w, "empty response from gRPC client", http.StatusInternalServerError)
+	}
 }
