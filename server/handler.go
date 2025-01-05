@@ -17,7 +17,9 @@ func (s *Server) WildcardHandler(w http.ResponseWriter, r *http.Request) {
 	//extract the subdomain from the request
 	subdomain := strings.Split(r.Host, ".")[0]
 
+	s.mu.Lock()
 	stream, ok := s.streams[subdomain]
+	s.mu.Unlock()
 
 	if !ok {
 		http.Error(w, "stream not found", http.StatusNotFound)
