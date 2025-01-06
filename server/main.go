@@ -31,7 +31,7 @@ func main() {
 
 	//start the http server
 	log.Printf("HTTP server listening at 0.0.0.0:8080")
-	http.HandleFunc("/", server.WildcardHandler)
+	http.HandleFunc("/", server.ClientHandler)
 	go http.ListenAndServe(":8080", nil)
 
 	//start the grpc server

@@ -9,7 +9,7 @@ import (
 	pb "github.com/0jk6/tunnel/proto"
 )
 
-func (s *Server) WildcardHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) ClientHandler(w http.ResponseWriter, r *http.Request) {
 	subdomain := strings.Split(r.Host, ".")[0]
 
 	s.mu.Lock()
@@ -28,7 +28,7 @@ func (s *Server) WildcardHandler(w http.ResponseWriter, r *http.Request) {
 		body, err = io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, "failed to read request body", http.StatusInternalServerError)
-			log.Fatalf("Error while reading body: %v", err)
+			log.Printf("Error while reading body: %v", err)
 			return
 		}
 	}
@@ -41,6 +41,7 @@ func (s *Server) WildcardHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	//send the incoming data to the grpc client
 	err := stream.Send(&pb.TunnelMessage{
 		Subdomain: subdomain,
 		Body:      body,
@@ -51,10 +52,11 @@ func (s *Server) WildcardHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		http.Error(w, "failed to send data to gRPC client", http.StatusInternalServerError)
-		log.Fatalf("Error while sending data to the gRPC client: %v", err)
+		log.Printf("Error while sending data to the gRPC client: %v", err)
 		return
 	}
 
+	//receive the response back from the grpc client
 	res, err := stream.Recv()
 	if err != nil {
 		if err == io.EOF {
@@ -66,6 +68,7 @@ func (s *Server) WildcardHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//send the received response back to the user over http
 	if res != nil {
 		// Set response headers based on the gRPC response
 		for key, value := range res.Headers {

@@ -25,6 +25,8 @@ func handleStream(client pb.TunnelServiceClient, port, subdomain string) {
 		log.Fatalf("Failed to send: %v", err)
 	}
 
+	log.Println("Connected to the gRPC tunnel server")
+
 	//channel to wait for the goroutine
 	waitc := make(chan struct{})
 
@@ -36,13 +38,13 @@ func handleStream(client pb.TunnelServiceClient, port, subdomain string) {
 				break
 			}
 			if err != nil {
-				log.Fatalf("Failed to receive: %v", err)
+				log.Printf("Failed to receive: %v", err)
 				break
 			}
 
 			// Create a new HTTP request
 			url := fmt.Sprintf("http://localhost:%s%s", port, res.Path)
-			log.Println(url)
+			log.Printf("%s %s", res.Method, res.Path)
 			req, err := http.NewRequest(res.Method, url, bytes.NewReader(res.Body))
 			if err != nil {
 				log.Printf("Failed to create request: %v", err)
@@ -61,10 +63,14 @@ func handleStream(client pb.TunnelServiceClient, port, subdomain string) {
 				continue
 			}
 
-			body, _ := io.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				log.Printf("Failed to read response body: %v", err)
+				// break
+			}
 			resp.Body.Close()
 
-			log.Println(string(body))
+			// log.Println(string(body))
 
 			// Based on the server's response, send back a response
 			err = stream.Send(&pb.TunnelMessage{
@@ -73,7 +79,7 @@ func handleStream(client pb.TunnelServiceClient, port, subdomain string) {
 			})
 
 			if err != nil {
-				log.Fatalf("Failed to send response to the gRPC server: %v", err)
+				log.Printf("Failed to send response to the gRPC server: %v", err)
 				// break
 			}
 
@@ -82,4 +88,12 @@ func handleStream(client pb.TunnelServiceClient, port, subdomain string) {
 	}()
 
 	<-waitc
+
+	//close the stream
+	log.Println("Closing stream")
+
+	err = stream.CloseSend()
+	if err != nil {
+		log.Fatalf("Failed to close stream: %v", err)
+	}
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"log"
 
 	pb "github.com/0jk6/tunnel/proto"
@@ -9,9 +8,7 @@ import (
 )
 
 func (s *Server) Connect(stream grpc.BidiStreamingServer[pb.TunnelMessage, pb.TunnelMessage]) error {
-	log.Println("Connected")
-
-	//receive the first request and store the id
+	//receive the first request and store the stream in the map
 	req, err := stream.Recv()
 	if err != nil {
 		return err
@@ -22,37 +19,21 @@ func (s *Server) Connect(stream grpc.BidiStreamingServer[pb.TunnelMessage, pb.Tu
 		return nil
 	}
 
+	//register the client
 	s.mu.Lock()
 	s.streams[subdomain] = stream
 	s.mu.Unlock()
 
 	log.Println("streams", s.streams)
+	log.Println("-----------------")
+
+	//wait until the client disconnects, all the bidirectional stream will happen in the handler.go file
+	<-stream.Context().Done()
 
 	//delete the stream from the map when the client disconnects
-	defer func() {
-		s.mu.Lock()
-		delete(s.streams, subdomain)
-		s.mu.Unlock()
-	}()
+	s.mu.Lock()
+	delete(s.streams, subdomain)
+	s.mu.Unlock()
 
-	//continue to receive requests and respond to them
-	for {
-		req, err := stream.Recv()
-		if err == io.EOF {
-			return nil
-		}
-
-		if err != nil {
-			return err
-		}
-
-		err = stream.Send(&pb.TunnelMessage{
-			Subdomain: subdomain,
-			Body:      req.Body,
-		})
-
-		if err != nil {
-			log.Fatalf("Error while sending data to the client: %v", err)
-		}
-	}
+	return nil
 }
