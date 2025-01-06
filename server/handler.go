@@ -10,11 +10,6 @@ import (
 )
 
 func (s *Server) WildcardHandler(w http.ResponseWriter, r *http.Request) {
-	//whatever requests are coming to this handler should be streamed to the grpc client
-	//and the response from the grpc client should be streamed back to the user
-	//this is the handler that will be used to handle all requests
-
-	//extract the subdomain from the request
 	subdomain := strings.Split(r.Host, ".")[0]
 
 	s.mu.Lock()
@@ -47,11 +42,11 @@ func (s *Server) WildcardHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err := stream.Send(&pb.TunnelMessage{
-		Id:      subdomain,
-		Body:    body,
-		Path:    r.URL.Path,
-		Headers: headers,
-		Method:  r.Method,
+		Subdomain: subdomain,
+		Body:      body,
+		Path:      r.URL.Path,
+		Headers:   headers,
+		Method:    r.Method,
 	})
 
 	if err != nil {
@@ -67,6 +62,7 @@ func (s *Server) WildcardHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		http.Error(w, "failed to receive data from gRPC client", http.StatusInternalServerError)
 		log.Printf("Error while receiving data from the client: %v", err)
+		delete(s.streams, subdomain)
 		return
 	}
 

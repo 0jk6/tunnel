@@ -5,7 +5,7 @@ package tunnel;
 option go_package = "github.com/0jk6/tunnel/proto";
 
 message TunnelMessage {
-    string id = 1;
+    string subdomain = 1;
     string method = 2;
     string path = 3;
     bytes body = 4;

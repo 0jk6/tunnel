@@ -17,13 +17,13 @@ func (s *Server) Connect(stream grpc.BidiStreamingServer[pb.TunnelMessage, pb.Tu
 		return err
 	}
 
-	clientId := req.Id
-	if clientId == "" {
+	subdomain := req.Subdomain
+	if subdomain == "" {
 		return nil
 	}
 
 	s.mu.Lock()
-	s.streams[clientId] = stream
+	s.streams[subdomain] = stream
 	s.mu.Unlock()
 
 	log.Println("streams", s.streams)
@@ -31,7 +31,7 @@ func (s *Server) Connect(stream grpc.BidiStreamingServer[pb.TunnelMessage, pb.Tu
 	//delete the stream from the map when the client disconnects
 	defer func() {
 		s.mu.Lock()
-		delete(s.streams, clientId)
+		delete(s.streams, subdomain)
 		s.mu.Unlock()
 	}()
 
@@ -47,8 +47,8 @@ func (s *Server) Connect(stream grpc.BidiStreamingServer[pb.TunnelMessage, pb.Tu
 		}
 
 		err = stream.Send(&pb.TunnelMessage{
-			Id:   clientId,
-			Body: req.Body,
+			Subdomain: subdomain,
+			Body:      req.Body,
 		})
 
 		if err != nil {
