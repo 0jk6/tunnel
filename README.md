@@ -18,14 +18,14 @@ Ensure you have the following installed:
 - [Protocol Buffers Compiler (`protoc`)](https://grpc.io/docs/protoc-installation/)
 
 ### Building
-1. Install dependencies
-    ```bash
-    go mod tidy
-    ```
-2. Generate gRPC structures:
+1. Generate gRPC structures:
    ```bash
    make proto
    ```
+2. Install dependencies
+    ```bash
+    go mod tidy
+    ```
 3. Build the binaries:
    ```bash
    make build
