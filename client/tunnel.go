@@ -11,6 +11,8 @@ import (
 	pb "github.com/0jk6/tunnel/proto"
 )
 
+//Todo: implement tcp requests as well
+
 func handleStream(client pb.TunnelServiceClient, port, subdomain string) {
 	stream, err := client.Connect(context.Background())
 	if err != nil {

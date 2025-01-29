@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net"
-	"net/http"
 	"sync"
 
 	pb "github.com/0jk6/tunnel/proto"
@@ -30,9 +29,10 @@ func main() {
 	pb.RegisterTunnelServiceServer(s, &server)
 
 	//start the http server
-	log.Printf("HTTP server listening at 0.0.0.0:8080")
-	http.HandleFunc("/", server.ClientHandler)
-	go http.ListenAndServe(":8080", nil)
+	// log.Printf("HTTP server listening at 0.0.0.0:8080")
+	// http.HandleFunc("/", server.ClientHandler)
+	// go http.ListenAndServe(":8080", nil)
+	go startTCPServer(&server)
 
 	//start the grpc server
 	log.Printf("gRPC server listening at %s", addr)
